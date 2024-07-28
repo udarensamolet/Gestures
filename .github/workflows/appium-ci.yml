@@ -1,0 +1,52 @@
+name: Appium .NET Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: selenium/standalone-chrome
+        ports:
+          - 4444:4444
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0.x' 
+
+    - name: Install dependencies
+      run: dotnet restore
+
+    - name: Build the project
+      run: dotnet build --configuration Release
+
+    - name: Start Appium server
+      run: |
+        npm install -g appium
+        appium --log-level error &
+
+    - name: Run tests
+      run: dotnet test --logger:"trx;LogFileName=test_results.trx"
+      env:
+        APPIUM_HOST: 127.0.0.1
+        APPIUM_PORT: 4723
+
+    - name: Archive test results
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: test-results
+        path: '**/*.trx'
